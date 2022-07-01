@@ -44,7 +44,6 @@ def radec_map_making(files, ifreq, ipol,
     #t0 = time.time()
     uv_org = UVData()
     uv_org.read(files, freq_chans=ifreq, polarizations=ipol)
-    start_flag = True
 
     # Data Conditioning
     dc = data_conditioning.DataConditioning(uv_org, 0, ipol)
@@ -84,10 +83,6 @@ def radec_map_making(files, ifreq, ipol,
         #print(f'P matrix calculated in {time.time() - t0} seconds.')
     else:
         opt_map.p_mat = np.nan
-    
-    if start_flag == True:
-        print(f'ifreq:{ifreq} no unflagged data available.')
-        return
     
     result_dic = {'px_dic':px_dic,
                   'map_sum':map_vis,
