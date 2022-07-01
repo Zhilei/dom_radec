@@ -43,77 +43,56 @@ def radec_map_making(files, ifreq, ipol,
     
     #t0 = time.time()
     uv_org = UVData()
-    #uv_org.read(files, frequencies=freq, polarizations=ipol)
     uv_org.read(files, freq_chans=ifreq, polarizations=ipol)
-#     lst_min = np.unique(uv_org.lst_array).min()
-#     lst_max = np.unique(uv_org.lst_array).max()
     start_flag = True
-    #print(np.unique(uv_org.time_array)[:])
-    for itime, time_t in enumerate(np.unique(uv_org.time_array)[:]):
-        #print(itime, time_t, end=';')
-        uv = uv_org.select(times=[time_t,], keep_all_metadata=False, inplace=False)
 
-        # Data Conditioning
-        dc = data_conditioning.DataConditioning(uv, 0, ipol)
-        dc.noise_calc()
-        if dc.rm_flag() is None:
-            #print('All flagged. Passed.')
-            continue
-        # Optimal Mapping & A matrix
-#         opt_map = optimal_mapping.OptMapping(dc.uv_1d, nside, epoch='J2000')
-        opt_map = optimal_mapping_radec_grid.OptMapping(dc.uv_1d, px_dic, epoch='Current')
+    # Data Conditioning
+    dc = data_conditioning.DataConditioning(uv_org, 0, ipol)
+    dc.noise_calc()
+    if dc.rm_flag() is None:
+        print('ifreq:', ifreq, ', all flagged. Passed.')
+        return
+    # Optimal Mapping & A matrix
+    opt_map = optimal_mapping_radec_grid.OptMapping(dc.uv_1d, px_dic, epoch='Current')
         
-        # Phase center calculation
-        lsts = np.unique(opt_map.uv.lst_array)
-        phase_center_ra = np.mean(lsts)
-        phase_center_dec = opt_map.uv.telescope_location_lat_lon_alt[0]
-        phase_center_ra_deg = np.degrees(phase_center_ra)
-        phase_center_dec_deg = np.degrees(phase_center_dec)
+    # Phase center calculation
+    lsts = np.unique(opt_map.uv.lst_array)
+    phase_center_ra = np.mean(lsts)
+    phase_center_dec = opt_map.uv.telescope_location_lat_lon_alt[0]
+    phase_center_ra_deg = np.degrees(phase_center_ra)
+    phase_center_dec_deg = np.degrees(phase_center_dec)
         
-        file_name = OUTPUT_FOLDER+'/data/h1c_idr22_f1_%.2fMHz_pol%d_%dbeam_radec_grid.p'%(freq/1e6, ipol, beam_power)
+    file_name = OUTPUT_FOLDER+'/data/h1c_idr22_f1_%.2fMHz_pol%d_%dbeam_radec_grid.p'%(freq/1e6, ipol, beam_power)
 
-        if OVERWRITE == False:
-            if os.path.exists(file_name):
-                print(file_name, 'existed, return.')
-                return
+    if OVERWRITE == False:
+        if os.path.exists(file_name):
+            print(file_name, 'existed, return.')
+            return
 
-        opt_map.set_a_mat()
-        opt_map.set_inv_noise_mat(dc.uvn)
-        map_vis = np.matmul(np.conjugate(opt_map.a_mat.T), 
-                            np.matmul(opt_map.inv_noise_mat, 
-                                      opt_map.data))
-        map_vis = np.real(map_vis)
-        beam_weight = np.matmul(np.conjugate((opt_map.beam_mat**beam_power).T), 
-                                np.diag(opt_map.inv_noise_mat),)
+    opt_map.set_a_mat()
+    opt_map.set_inv_noise_mat(dc.uvn)
+    map_vis = np.matmul(np.conjugate(opt_map.a_mat.T), 
+                        np.matmul(opt_map.inv_noise_mat, 
+                                  opt_map.data))
+    map_vis = np.real(map_vis)
+    beam_weight = np.matmul(np.conjugate((opt_map.beam_mat**beam_power).T), 
+                            np.diag(opt_map.inv_noise_mat),)
         
-        #print(f'A matrix calculated in {time.time() - t0} seconds.')
-        if p_mat_calc:
-            opt_map.set_p_mat()
-            #print(f'P matrix calculated in {time.time() - t0} seconds.')
-        else:
-            opt_map.p_mat = np.nan
-
-#         print('Phase center:', phase_center_ra_deg, phase_center_dec_deg, end=';')
-#         print('a_mat shape is:', opt_map.a_mat.shape)
-        
-        if start_flag:
-            map_sum = copy.deepcopy(map_vis)
-            weight_sum = copy.deepcopy(beam_weight)
-            p_sum = copy.deepcopy(opt_map.p_mat)
-            start_flag=False
-        else:
-            map_sum += map_vis
-            weight_sum += beam_weight
-            p_sum += opt_map.p_mat
+    #print(f'A matrix calculated in {time.time() - t0} seconds.')
+    if p_mat_calc:
+        opt_map.set_p_mat()
+        #print(f'P matrix calculated in {time.time() - t0} seconds.')
+    else:
+        opt_map.p_mat = np.nan
     
     if start_flag == True:
         print(f'ifreq:{ifreq} no unflagged data available.')
         return
     
     result_dic = {'px_dic':px_dic,
-                  'map_sum':map_sum,
-                  'weight_sum':weight_sum,
-                  'p_sum':p_sum,}
+                  'map_sum':map_vis,
+                  'weight_sum':beam_weight,
+                  'p_sum':opt_map.p_mat,}
     with open(file_name, 'wb') as f_t:
         pickle.dump(result_dic, f_t, protocol=4) 
     print(f'ifreq:{ifreq} finished in {time.time() - t0} seconds.')
