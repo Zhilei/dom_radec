@@ -109,17 +109,17 @@ if __name__ == '__main__':
     #data_folder = '/nfs/esc/hera/Validation/test-4.0.0/pipeline/LSTBIN/true_eor'
     #files = np.array(sorted(glob(data_folder+'/zen.eor.LST.*.HH.uvh5')))
     
-    nthread = 10
+    nthread = 2
     ifreq_arr = np.arange(175, 336, dtype=int) #band1
     #ifreq_arr = np.arange(515, 696, dtype=int) #band2
     #ifreq_arr = np.array([600,])
     #ifreq_arr = np.array([676,])
     ipol_arr = [-6, -5]
-    args = product(np.expand_dims(files[3:8], axis=0), ifreq_arr[:], ipol_arr)
+    args = product(np.expand_dims(files[3:8], axis=0), ifreq_arr[::-1], ipol_arr)
     
-    for args_t in args:
-        print(args_t)
-        radec_map_making(*args_t)
+    #for args_t in args:
+    #    print(args_t)
+    #    radec_map_making(*args_t)
     
     pool = multiprocessing.Pool(processes=nthread)
     pool.starmap(radec_map_making, args)
