@@ -18,7 +18,9 @@ import os
 from pygdsm import GlobalSkyModel2016
 from direct_optimal_mapping import optimal_mapping_radec_grid, data_conditioning
 
-OUTPUT_FOLDER = '/nfs/esc/hera/zhileixu/optimal_mapping/h1c_idr22/radec_grid/validation/sum/band1'
+split = 'even'
+
+OUTPUT_FOLDER = '/nfs/esc/hera/zhileixu/optimal_mapping/h1c_idr22/radec_grid/band1/%s'%split
 
 OVERWRITE = False
 
@@ -41,7 +43,7 @@ def radec_map_making(files, ifreq, ipol,
     uv_org = UVData()
     uv_org.read(files, freq_chans=ifreq, polarizations=ipol)
     start_flag = True
-    for itime, time_t in enumerate(np.unique(uv_org.time_array)[:]):
+    for itime, time_t in enumerate(np.unique(uv_org.time_array)[::2]):
         #print(itime, time_t, end=';')
         uv = uv_org.select(times=[time_t,], keep_all_metadata=False, inplace=False)
 
@@ -54,7 +56,7 @@ def radec_map_making(files, ifreq, ipol,
             continue
         opt_map = optimal_mapping_radec_grid.OptMapping(dc.uv_1d, px_dic, epoch='Current')
 
-        file_name = OUTPUT_FOLDER+'/data/h1c_idr22_f1_%.2fMHz_pol%d_radec_grid_sum_val.p'%(freq/1e6, ipol)
+        file_name = OUTPUT_FOLDER+'/h1c_idr22_f1_%.2fMHz_pol%d_radec_grid_%s.p'%(freq/1e6, ipol, split)
 
         if OVERWRITE == False:
             if os.path.exists(file_name):
@@ -108,26 +110,25 @@ def radec_map_making(files, ifreq, ipol,
 if __name__ == '__main__':
     #H1C part
     #nfiles2group = 1
-#     data_folder = '/nfs/esc/hera/H1C_IDR22/IDR2_2_pspec/v2/one_group/data'
-#     files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.HH.OCRSLP2X.uvh5')))[3:8]
+    data_folder = '/nfs/esc/hera/H1C_IDR22/IDR2_2_pspec/v2/one_group/data'
+    files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.HH.OCRSLP2X.uvh5')))[3:8]
     #data_folder = '/nfs/esc/hera/H1C_IDR22/LSTBIN/one_group/grp1'
     #files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.*.HH.OCRSL.uvh5')))
     #data_folder = '/nfs/esc/hera/H1C_IDR32/LSTBIN/all_epochs'
     #files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.sum.uvh5')))
-    data_folder = '/nfs/esc/hera/Validation/test-4.0.0/pipeline/LSTBIN/sum'
-    files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.HH.OCRSLPX.uvh5')))[:5]
+#     data_folder = '/nfs/esc/hera/Validation/test-4.0.0/pipeline/LSTBIN/sum'
+#     files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.HH.OCRSLPX.uvh5')))[:5]
 #     data_folder = '/nfs/esc/hera/Validation/test-4.0.0/pipeline/LSTBIN/true_foregrounds'
 #     files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.HH.OCRSL.uvh5')))
 #     data_folder = '/nfs/esc/hera/Validation/test-4.0.0/pipeline/LSTBIN/true_eor'
 #     files = np.array(sorted(glob(data_folder+'/zen.eor.LST.*.HH.uvh5')))
-
-    nthread = 25
+    print(split)
+    nthread = 15
     ifreq_arr = np.arange(175, 336, dtype=int) #band1
 #     ifreq_arr = np.arange(515, 696, dtype=int) #band2
-    #ifreq_arr = np.array([600,])
-    #ifreq_arr = np.array([676,])
+
     ipol_arr = [-6, -5]
-    args = product(np.expand_dims(files, axis=0), ifreq_arr[::-1], ipol_arr)
+    args = product(np.expand_dims(files, axis=0), ifreq_arr[:], ipol_arr)
 
 #     for args_t in args:
 #         print(args_t)
