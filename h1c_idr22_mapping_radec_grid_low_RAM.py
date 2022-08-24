@@ -19,8 +19,9 @@ from pygdsm import GlobalSkyModel2016
 from direct_optimal_mapping import optimal_mapping_radec_grid, data_conditioning
 
 split = 'even'
+band = 'band1'
 
-OUTPUT_FOLDER = '/nfs/esc/hera/zhileixu/optimal_mapping/h1c_idr22/radec_grid/band1/%s'%split
+OUTPUT_FOLDER = '/nfs/esc/hera/zhileixu/optimal_mapping/h1c_idr22/radec_grid/%s/%s'%(band, split)
 
 OVERWRITE = False
 
@@ -43,12 +44,18 @@ def radec_map_making(files, ifreq, ipol,
     uv_org = UVData()
     uv_org.read(files, freq_chans=ifreq, polarizations=ipol)
     start_flag = True
-    for itime, time_t in enumerate(np.unique(uv_org.time_array)[::2]):
+    if split == 'even':
+        time_arr = np.unique(uv_org.time_array)[::2]
+    elif split == 'odd':
+        time_arr = np.unique(uv_org.time_array)[1::2]
+        
+    for time_t in time_arr:
         #print(itime, time_t, end=';')
         uv = uv_org.select(times=[time_t,], keep_all_metadata=False, inplace=False)
 
         # Data Conditioning
         dc = data_conditioning.DataConditioning(uv, 0, ipol)
+        dc.bl_selection()
         dc.noise_calc()
         n_vis = dc.uv_1d.data_array.shape[0]
         if dc.rm_flag() is None:
@@ -124,11 +131,14 @@ if __name__ == '__main__':
 #     files = np.array(sorted(glob(data_folder+'/zen.eor.LST.*.HH.uvh5')))
     print(split)
     nthread = 15
-    ifreq_arr = np.arange(175, 336, dtype=int) #band1
-#     ifreq_arr = np.arange(515, 696, dtype=int) #band2
-
+    if band == 'band1':
+        ifreq_arr = np.arange(175, 335, dtype=int) #band1
+    elif band == 'band2':
+        ifreq_arr = np.arange(515, 695, dtype=int) #band2
+    else:
+        raise RuntimeError('Wrong input for band.')
     ipol_arr = [-6, -5]
-    args = product(np.expand_dims(files, axis=0), ifreq_arr[:], ipol_arr)
+    args = product(np.expand_dims(files, axis=0), ifreq_arr[::-1], ipol_arr)
 
 #     for args_t in args:
 #         print(args_t)
