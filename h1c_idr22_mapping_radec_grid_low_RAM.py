@@ -18,12 +18,15 @@ import os
 from pygdsm import GlobalSkyModel2016
 from direct_optimal_mapping import optimal_mapping_radec_grid, data_conditioning
 
-split = 'even'
+split = 'odd'
 band = 'band1'
-
+sequence = 'backward'
 OUTPUT_FOLDER = '/nfs/esc/hera/zhileixu/optimal_mapping/h1c_idr22/radec_grid/%s/%s'%(band, split)
-
 OVERWRITE = False
+
+print('Mapping para.:', band, split, sequence) 
+print('overwrite:', OVERWRITE)
+print(OUTPUT_FOLDER)
 
 def radec_map_making(files, ifreq, ipol,
                      p_mat_calc=True):
@@ -129,7 +132,6 @@ if __name__ == '__main__':
 #     files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.HH.OCRSL.uvh5')))
 #     data_folder = '/nfs/esc/hera/Validation/test-4.0.0/pipeline/LSTBIN/true_eor'
 #     files = np.array(sorted(glob(data_folder+'/zen.eor.LST.*.HH.uvh5')))
-    print(split)
     nthread = 15
     if band == 'band1':
         ifreq_arr = np.arange(175, 335, dtype=int) #band1
@@ -138,7 +140,12 @@ if __name__ == '__main__':
     else:
         raise RuntimeError('Wrong input for band.')
     ipol_arr = [-6, -5]
-    args = product(np.expand_dims(files, axis=0), ifreq_arr[::-1], ipol_arr)
+    if sequence == 'forward':
+        args = product(np.expand_dims(files, axis=0), ifreq_arr[:], ipol_arr)
+    elif sequence == 'backward':
+        args = product(np.expand_dims(files, axis=0), ifreq_arr[::-1], ipol_arr)
+    else:
+        raise RuntimeError('Sequence should be either forward or backward.')
 
 #     for args_t in args:
 #         print(args_t)
