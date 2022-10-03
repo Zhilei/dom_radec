@@ -18,12 +18,22 @@ import os
 from pygdsm import GlobalSkyModel2016
 from direct_optimal_mapping import optimal_mapping_radec_grid, data_conditioning
 
+data_type = 'validation' # 'validation', 'h1c_idr32'
+val_type = 'sum' # 'true_eor', 'true_foregrounds', 'true_sum', 'sum', only useful when data_type == 'validation'
+
 split = 'odd'
 band = 'band1'
-sequence = 'backward'
-OUTPUT_FOLDER = '/nfs/esc/hera/zhileixu/optimal_mapping/h1c_idr22/radec_grid/%s/%s'%(band, split)
+sequence = 'forward'
+
+if data_type == 'h1c_idr22':
+    OUTPUT_FOLDER = '/nfs/esc/hera/zhileixu/optimal_mapping/h1c_idr22/radec_grid/%s/%s'%(band, split)
+elif data_type == 'validation':
+    OUTPUT_FOLDER = '/nfs/esc/hera/zhileixu/optimal_mapping/h1c_idr22/radec_grid/%s/%s/%s'%(val_type, band, split)
 OVERWRITE = False
 
+print('data type:', data_type)
+if data_type == 'validation':
+    print('Validation type:', val_type)
 print('Mapping para.:', band, split, sequence) 
 print('overwrite:', OVERWRITE)
 print(OUTPUT_FOLDER)
@@ -34,10 +44,10 @@ def radec_map_making(files, ifreq, ipol,
     t0 = time.time()
     ra_center_deg = 30
     dec_center_deg = -30.7
-    ra_rng_deg = 32
-    n_ra = 64
-    dec_rng_deg = 16
-    n_dec = 32
+    ra_rng_deg = 16
+    n_ra = 32
+    dec_rng_deg = 8
+    n_dec = 16
     sky_px = optimal_mapping_radec_grid.SkyPx()
     px_dic = sky_px.calc_px(ra_center_deg, ra_rng_deg, n_ra, 
                             dec_center_deg, dec_rng_deg, n_dec)
@@ -66,7 +76,7 @@ def radec_map_making(files, ifreq, ipol,
             continue
         opt_map = optimal_mapping_radec_grid.OptMapping(dc.uv_1d, px_dic, epoch='Current')
 
-        file_name = OUTPUT_FOLDER+'/h1c_idr22_f1_%.2fMHz_pol%d_radec_grid_%s.p'%(freq/1e6, ipol, split)
+        file_name = OUTPUT_FOLDER+'/h1c_idr22_f1_%.2fMHz_pol%d_radec_grid_%s_small.p'%(freq/1e6, ipol, split)
 
         if OVERWRITE == False:
             if os.path.exists(file_name):
@@ -118,21 +128,33 @@ def radec_map_making(files, ifreq, ipol,
     return
 
 if __name__ == '__main__':
-    #H1C part
-    #nfiles2group = 1
-    data_folder = '/nfs/esc/hera/H1C_IDR22/IDR2_2_pspec/v2/one_group/data'
-    files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.HH.OCRSLP2X.uvh5')))[3:8]
-    #data_folder = '/nfs/esc/hera/H1C_IDR22/LSTBIN/one_group/grp1'
-    #files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.*.HH.OCRSL.uvh5')))
-    #data_folder = '/nfs/esc/hera/H1C_IDR32/LSTBIN/all_epochs'
-    #files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.sum.uvh5')))
-#     data_folder = '/nfs/esc/hera/Validation/test-4.0.0/pipeline/LSTBIN/sum'
-#     files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.HH.OCRSLPX.uvh5')))[:5]
-#     data_folder = '/nfs/esc/hera/Validation/test-4.0.0/pipeline/LSTBIN/true_foregrounds'
-#     files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.HH.OCRSL.uvh5')))
-#     data_folder = '/nfs/esc/hera/Validation/test-4.0.0/pipeline/LSTBIN/true_eor'
-#     files = np.array(sorted(glob(data_folder+'/zen.eor.LST.*.HH.uvh5')))
-    nthread = 15
+    if data_type == 'h1c_idr22':
+        #H1C part
+        data_folder = '/nfs/esc/hera/H1C_IDR22/IDR2_2_pspec/v2/one_group/data'
+        files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.HH.OCRSLP2X.uvh5')))[3:8]
+    elif data_type == 'h1c_idr32':
+        data_folder = '/nfs/esc/hera/H1C_IDR32/LSTBIN/all_epochs'
+        files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.sum.uvh5')))
+    elif data_type == 'validation':
+        if val_type == 'sum':
+            data_folder = '/nfs/esc/hera/Validation/test-4.0.0/pipeline/LSTBIN/%s'%val_type
+            files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.HH.OCRSLPX.uvh5')))[:5]
+        elif val_type == 'true_sum':
+            data_folder = '/nfs/esc/hera/Validation/test-4.0.0/pipeline/LSTBIN/%s'%val_type
+            files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.HH.OCRSL.uvh5')))[:5]
+        elif val_type == 'true_foregrounds':
+            data_folder = '/nfs/esc/hera/Validation/test-4.0.0/pipeline/LSTBIN/%s'%val_type
+            files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.HH.OCRSL.uvh5')))[:5]
+        elif val_type == 'true_eor':
+            data_folder = '/nfs/esc/hera/Validation/test-4.0.0/pipeline/LSTBIN/%s'%val_type
+            files = np.array(sorted(glob(data_folder+'/zen.eor.LST.*.HH.uvh5')))[:5]
+        else:
+            print('Wrong validation type.')
+    else:
+        print('Wrong data type.')
+
+    print('Files being mapped:\n', files)
+    nthread = 10
     if band == 'band1':
         ifreq_arr = np.arange(175, 335, dtype=int) #band1
     elif band == 'band2':
