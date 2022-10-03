@@ -23,7 +23,7 @@ val_type = 'sum' # 'true_eor', 'true_foregrounds', 'true_sum', 'sum', only usefu
 
 split = 'odd'
 band = 'band1'
-sequence = 'forward'
+sequence = 'backward'
 
 if data_type == 'h1c_idr22':
     OUTPUT_FOLDER = '/nfs/esc/hera/zhileixu/optimal_mapping/h1c_idr22/radec_grid/%s/%s'%(band, split)
@@ -31,7 +31,7 @@ elif data_type == 'validation':
     OUTPUT_FOLDER = '/nfs/esc/hera/zhileixu/optimal_mapping/h1c_idr22/radec_grid/%s/%s/%s'%(val_type, band, split)
 OVERWRITE = False
 
-print('data type:', data_type)
+print('Data type:', data_type)
 if data_type == 'validation':
     print('Validation type:', val_type)
 print('Mapping para.:', band, split, sequence) 
