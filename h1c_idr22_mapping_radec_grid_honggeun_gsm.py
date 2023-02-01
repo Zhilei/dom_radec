@@ -21,6 +21,7 @@ from direct_optimal_mapping import optimal_mapping_radec_grid, data_conditioning
 data_type = 'validation' # 'validation', 'h1c_idr32'
 val_type = 'honggeun_gsm' # 'true_eor', 'true_foregrounds', 'true_sum', 'sum', only useful when data_type == 'validation'
 n_int = 100 # number of integrations
+map_type = '%dint320ant'%n_int
 
 sequence = 'forward'
 nthread = 20
@@ -28,13 +29,13 @@ nthread = 20
 if data_type == 'h1c_idr22':
     OUTPUT_FOLDER = '/nfs/esc/hera/zhileixu/optimal_mapping/h1c_idr22/radec_grid/%s/%s'%(band, split)
 elif data_type == 'validation':
-    OUTPUT_FOLDER = '/nfs/esc/hera/zhileixu/optimal_mapping/h1c_idr22/radec_grid/validation/%s'%val_type
+    OUTPUT_FOLDER = '/nfs/esc/hera/zhileixu/optimal_mapping/h1c_idr22/radec_grid/validation/%s/%s'%(val_type, map_type)
 OVERWRITE = False
 
 print('Data type:', data_type)
 if data_type == 'validation':
     print('Validation type:', val_type)
-print('Mapping para.:', sequence) 
+print('Mapping para.:', map_type, sequence) 
 print('Number of integrations:', n_int)
 print('overwrite:', OVERWRITE)
 print('Number of threads:', nthread)
@@ -42,7 +43,7 @@ print(OUTPUT_FOLDER)
 
 def radec_map_making(files, ifreq, ipol,
                      p_mat_calc=True, 
-                     select_ant=True):
+                     select_ant=False):
 
     t0 = time.time()
     ra_center_deg = 21.6 # 19.5 for 1int, 21.6 for 100int, 23.6 for 200int
@@ -84,10 +85,11 @@ def radec_map_making(files, ifreq, ipol,
         if dc.rm_flag() is None:
             #print('All flagged. Passed.')
             continue
+        dc.redundant_avg()
         opt_map = optimal_mapping_radec_grid.OptMapping(dc.uv_1d, px_dic)
 
         file_name = OUTPUT_FOLDER+\
-        '/h1c_idr22_honggeun_gsm_%.2fMHz_pol%d_radec_grid_%dint_RA%dDec%d.p'%(freq/1e6, ipol, n_int, 
+        '/h1c_idr22_honggeun_gsm_%.2fMHz_pol%d_radec_grid_%s_RA%dDec%d.p'%(freq/1e6, ipol, map_type, 
                                                                               ra_rng_deg, dec_rng_deg)
 
         if OVERWRITE == False:
