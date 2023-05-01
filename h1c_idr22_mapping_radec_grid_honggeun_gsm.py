@@ -20,8 +20,10 @@ from direct_optimal_mapping import optimal_mapping_radec_grid, data_conditioning
 
 data_type = 'validation' # 'validation', 'h1c_idr32'
 val_type = 'honggeun_gsm' # 'true_eor', 'true_foregrounds', 'true_sum', 'sum', only useful when data_type == 'validation'
-n_int = 100 # number of integrations
-map_type = '%dint320ant'%n_int
+version = '2023Mar24'
+n_int = 1 # number of integrations
+n_ant = 320
+map_type = '%dint%dant'%(n_int, n_ant)
 
 sequence = 'forward'
 nthread = 20
@@ -29,14 +31,15 @@ nthread = 20
 if data_type == 'h1c_idr22':
     OUTPUT_FOLDER = '/nfs/esc/hera/zhileixu/optimal_mapping/h1c_idr22/radec_grid/%s/%s'%(band, split)
 elif data_type == 'validation':
-    OUTPUT_FOLDER = '/nfs/esc/hera/zhileixu/optimal_mapping/h1c_idr22/radec_grid/validation/%s/%s'%(val_type, map_type)
-OVERWRITE = False
+    OUTPUT_FOLDER = '/nfs/esc/hera/zhileixu/optimal_mapping/h1c_idr22/radec_grid/validation/%s/%s/%s'%(val_type, version, map_type)
+OVERWRITE = True
 
 print('Data type:', data_type)
 if data_type == 'validation':
     print('Validation type:', val_type)
 print('Mapping para.:', map_type, sequence) 
 print('Number of integrations:', n_int)
+print('Number of antennas:', n_ant)
 print('overwrite:', OVERWRITE)
 print('Number of threads:', nthread)
 print(OUTPUT_FOLDER)
@@ -46,14 +49,14 @@ def radec_map_making(files, ifreq, ipol,
                      select_ant=False):
 
     t0 = time.time()
-    ra_center_deg = 21.6 # 19.5 for 1int, 21.6 for 100int, 23.6 for 200int
+    ra_center_deg = 30 # 19.5 for 1int, 21.6 for 100int, 23.6 for 200int
     dec_center_deg = -30.7
     ra_rng_deg = 16
     n_ra = 32
     dec_rng_deg = 8
     n_dec = 16
     sky_px = optimal_mapping_radec_grid.SkyPx()
-    px_dic = sky_px.calc_px(ra_center_deg, ra_rng_deg, n_ra, 
+    px_dic = sky_px.calc_radec_pix(ra_center_deg, ra_rng_deg, n_ra, 
                             dec_center_deg, dec_rng_deg, n_dec)
     uv_org = UVData()
     uv_org.read(files, freq_chans=ifreq, polarizations=ipol)
@@ -64,16 +67,10 @@ def radec_map_making(files, ifreq, ipol,
 
         uv_org.select(antenna_nums=ant_sel, inplace=True, keep_all_metadata=False)
     start_flag = True
-#     if split == 'even':
-#         time_arr = np.unique(uv_org.time_array)[::2]
-#     elif split == 'odd':
-#         time_arr = np.unique(uv_org.time_array)[1::2]
     time_arr = np.unique(uv_org.time_array)[:]
-#     print(len(time_arr), 'integrations.')
     freq = uv_org.freq_array[0, 0]
-#     print(uv_org.antenna_numbers.shape, 'antennas.')
     
-    for time_t in time_arr[:]:
+    for time_t in time_arr[:1]:
         #print(itime, time_t, end=';')
         uv = uv_org.select(times=[time_t,], keep_all_metadata=False, inplace=False)
 
@@ -86,6 +83,11 @@ def radec_map_making(files, ifreq, ipol,
             #print('All flagged. Passed.')
             continue
         dc.redundant_avg()
+        bl_max = np.sqrt(np.sum(dc.uv_1d.uvw_array**2, axis=1)).max()
+        radius2ctr = np.radians(hp.rotator.angdist(np.array([px_dic['ra_deg'].flatten(), px_dic['dec_deg'].flatten()]), 
+                                                   [np.mean(px_dic['ra_deg']), np.mean(px_dic['dec_deg'])], lonlat=True))
+        radius2ctr = radius2ctr.reshape(px_dic['ra_deg'].shape)
+        
         opt_map = optimal_mapping_radec_grid.OptMapping(dc.uv_1d, px_dic)
 
         file_name = OUTPUT_FOLDER+\
@@ -136,7 +138,11 @@ def radec_map_making(files, ifreq, ipol,
                   'beam_weight_sum':beam_weight_sum,
                   'beam_sq_weight_sum':beam_sq_weight_sum,
                   'n_vis': n_vis,
-                  'p_sum': p_sum,}
+                  'p_sum': p_sum,
+                  'freq': freq,
+                  'bl_max':bl_max,
+                  'radius2ctr': radius2ctr,
+                 }
     with open(file_name, 'wb') as f_t:
         pickle.dump(result_dic, f_t, protocol=4) 
     print(f'ifreq:{ifreq} finished in {time.time() - t0} seconds.')
@@ -164,8 +170,8 @@ if __name__ == '__main__':
             data_folder = '/nfs/esc/hera/Validation/test-4.0.0/pipeline/LSTBIN/%s'%val_type
             files = np.array(sorted(glob(data_folder+'/zen.eor.LST.*.HH.uvh5')))[:5]
         elif val_type == 'honggeun_gsm':
-            data_folder = '/nfs/ger/proj/hera/hgkim/simulations/dipole_GSM_nside256/2022Nov7'
-            files = np.array(sorted(glob(data_folder+'/sim.2458116.*_GSM2008_nside256_J2000.uvh5')))[:n_int//2] # from 19.5 to 27.8 deg RA
+            data_folder = '/nfs/ger/proj/hera/hgkim/simulations/dipole_GSM_radec/2023Mar24'
+            files = np.array(sorted(glob(data_folder+'/sim.2458116.*_GSM2008_nside256_J2000.uvh5')))[:1] # from 19.5 to 27.8 deg RA
         else:
             print('Wrong validation type.')
     else:
@@ -178,7 +184,7 @@ if __name__ == '__main__':
 #         ifreq_arr = np.arange(515, 695, dtype=int) #band2
 #     else:
 #         raise RuntimeError('Wrong input for band.')
-    ifreq_arr = np.arange(120)
+    ifreq_arr = np.arange(180)
 #     ifreq_arr = np.arange(77, 79)    
     ipol_arr = [-5]
     if sequence == 'forward':
