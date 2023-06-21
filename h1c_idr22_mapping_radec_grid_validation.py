@@ -19,11 +19,12 @@ from pygdsm import GlobalSkyModel2016
 from direct_optimal_mapping import optimal_mapping_radec_grid, data_conditioning
 
 data_type = 'validation' # 'validation', 'h1c_idr32'
-val_type = 'honggeun_gsm' # 'true_eor', 'true_foregrounds', 'true_sum', 'sum', only useful when data_type == 'validation'
-version = '2023Feb23'
-n_int = 100 # number of integrations
-n_ant = 320
-map_type = '%dint%dant'%(n_int, n_ant)
+val_type = 'true_foregrounds' # 'true_eor', 'true_foregrounds', 'true_sum', 'sum', only useful when data_type == 'validation'
+# version = '2023Feb23'
+# n_int = 100 # number of integrations
+# n_ant = 320
+# map_type = '%dint%dant'%(n_int, n_ant)
+band = 'band2'
 
 sequence = 'forward'
 nthread = 20
@@ -31,15 +32,16 @@ nthread = 20
 if data_type == 'h1c_idr22':
     OUTPUT_FOLDER = '/nfs/esc/hera/zhileixu/optimal_mapping/h1c_idr22/radec_grid/%s/%s'%(band, split)
 elif data_type == 'validation':
-    OUTPUT_FOLDER = '/nfs/esc/hera/zhileixu/optimal_mapping/h1c_idr22/radec_grid/validation/%s/%s/%s'%(val_type, version, map_type)
+#     OUTPUT_FOLDER = '/nfs/esc/hera/zhileixu/optimal_mapping/h1c_idr22/radec_grid/validation/%s/%s/%s'%(val_type, version, map_type)
+    OUTPUT_FOLDER = '/nfs/esc/hera/zhileixu/optimal_mapping/h1c_idr22/radec_grid/validation/%s/data'%(val_type)
 OVERWRITE = True
 
 print('Data type:', data_type)
 if data_type == 'validation':
     print('Validation type:', val_type)
-print('Mapping para.:', map_type, sequence) 
-print('Number of integrations:', n_int)
-print('Number of antennas:', n_ant)
+print('Mapping para.:', sequence) 
+# print('Number of integrations:', n_int)
+# print('Number of antennas:', n_ant)
 print('overwrite:', OVERWRITE)
 print('Number of threads:', nthread)
 print(OUTPUT_FOLDER)
@@ -91,7 +93,7 @@ def radec_map_making(files, ifreq, ipol,
         opt_map = optimal_mapping_radec_grid.OptMapping(dc.uv_1d, px_dic)
 
         file_name = OUTPUT_FOLDER+\
-        '/h1c_idr22_honggeun_gsm_%.2fMHz_pol%d_radec_grid_%s_RA%dDec%d.p'%(freq/1e6, ipol, map_type, 
+        '/h1c_idr22_%s_%.2fMHz_pol%d_radec_grid_RA%dDec%d.p'%(val_type, freq/1e6, ipol, 
                                                                               ra_rng_deg, dec_rng_deg)
 
         if OVERWRITE == False:
@@ -99,9 +101,9 @@ def radec_map_making(files, ifreq, ipol,
                 print(file_name, 'existed, return.')
                 return
 
-        opt_map.set_a_mat(uvw_sign=-1)
+        opt_map.set_a_mat(uvw_sign=1)
 #         print(opt_map.a_mat.shape)
-        opt_map.set_inv_noise_mat(dc.uvn)
+        opt_map.set_inv_noise_mat(dc.uvn, norm=True)
         map_vis = np.matmul(np.conjugate(opt_map.a_mat.T), 
                             np.matmul(opt_map.inv_noise_mat, 
                                       opt_map.data))
@@ -159,16 +161,16 @@ if __name__ == '__main__':
     elif data_type == 'validation':
         if val_type == 'sum':
             data_folder = '/nfs/esc/hera/Validation/test-4.0.0/pipeline/LSTBIN/%s'%val_type
-            files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.HH.OCRSLPX.uvh5')))[:5]
+            files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.HH.OCRSLPX.uvh5')))[:3]
         elif val_type == 'true_sum':
             data_folder = '/nfs/esc/hera/Validation/test-4.0.0/pipeline/LSTBIN/%s'%val_type
-            files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.HH.OCRSL.uvh5')))[:5]
+            files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.HH.OCRSL.uvh5')))[:3]
         elif val_type == 'true_foregrounds':
             data_folder = '/nfs/esc/hera/Validation/test-4.0.0/pipeline/LSTBIN/%s'%val_type
-            files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.HH.OCRSL.uvh5')))[:5]
+            files = np.array(sorted(glob(data_folder+'/zen.grp1.of1.LST.*.HH.OCRSL.uvh5')))[:3]
         elif val_type == 'true_eor':
             data_folder = '/nfs/esc/hera/Validation/test-4.0.0/pipeline/LSTBIN/%s'%val_type
-            files = np.array(sorted(glob(data_folder+'/zen.eor.LST.*.HH.uvh5')))[:5]
+            files = np.array(sorted(glob(data_folder+'/zen.eor.LST.*.HH.uvh5')))[:3]
         elif val_type == 'honggeun_gsm':
             data_folder = '/nfs/ger/proj/hera/hgkim/simulations/dipole_GSM_nside256/2023Feb23'
             files = np.array(sorted(glob(data_folder+'/sim.2458116.*_GSM2008_nside256_J2000.uvh5')))[:] # from 19.5 to 27.8 deg RA
@@ -178,13 +180,13 @@ if __name__ == '__main__':
         print('Wrong data type.')
 
     print('%d Files being mapped:\n'%len(files), files)
-#     if band == 'band1':
-#         ifreq_arr = np.arange(175, 335, dtype=int) #band1
-#     elif band == 'band2':
-#         ifreq_arr = np.arange(515, 695, dtype=int) #band2
-#     else:
-#         raise RuntimeError('Wrong input for band.')
-    ifreq_arr = np.arange(180)
+    if band == 'band1':
+        ifreq_arr = np.arange(175, 335, dtype=int) #band1
+    elif band == 'band2':
+        ifreq_arr = np.arange(515, 695, dtype=int) #band2
+    else:
+        raise RuntimeError('Wrong input for band.')
+#     ifreq_arr = np.arange(180)
 #     ifreq_arr = np.arange(77, 79)    
     ipol_arr = [-5]
     if sequence == 'forward':
