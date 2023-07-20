@@ -19,7 +19,7 @@ from pygdsm import GlobalSkyModel2016
 from direct_optimal_mapping import optimal_mapping_radec_grid, data_conditioning
 
 data_type = 'validation' # 'validation', 'h1c_idr32'
-val_type = 'true_foregrounds' # 'true_eor', 'true_foregrounds', 'true_sum', 'sum', only useful when data_type == 'validation'
+val_type = 'sum' # 'true_eor', 'true_foregrounds', 'true_sum', 'sum', only useful when data_type == 'validation'
 # version = '2023Feb23'
 # n_int = 100 # number of integrations
 # n_ant = 320
@@ -34,7 +34,7 @@ if data_type == 'h1c_idr22':
 elif data_type == 'validation':
 #     OUTPUT_FOLDER = '/nfs/esc/hera/zhileixu/optimal_mapping/h1c_idr22/radec_grid/validation/%s/%s/%s'%(val_type, version, map_type)
     OUTPUT_FOLDER = '/nfs/esc/hera/zhileixu/optimal_mapping/h1c_idr22/radec_grid/validation/%s/data'%(val_type)
-OVERWRITE = True
+OVERWRITE = False
 
 print('Data type:', data_type)
 if data_type == 'validation':
@@ -51,7 +51,7 @@ def radec_map_making(files, ifreq, ipol,
                      select_ant=False):
 
     t0 = time.time()
-    ra_center_deg = 21.6 # 19.5 for 1int, 21.6 for 100int, 23.6 for 200int
+    ra_center_deg = 24.2 # 19.5 for 1int, 21.6 for 100int, 23.6 for 200int, 24.2 for first 180 of h1c_idr22 validation sim
     dec_center_deg = -30.7
     ra_rng_deg = 16
     n_ra = 32
@@ -78,7 +78,7 @@ def radec_map_making(files, ifreq, ipol,
 
         # Data Conditioning
         dc = data_conditioning.DataConditioning(uv, 0, ipol)
-#         dc.bl_selection()
+        dc.bl_selection()
         dc.noise_calc()
         n_vis = dc.uv_1d.data_array.shape[0]
         if dc.rm_flag() is None:
